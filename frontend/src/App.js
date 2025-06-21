@@ -1,157 +1,122 @@
 import React, { useState } from "react";
 import axios from "axios";
 
+const API_BASE = "https://excel-app-backend.onrender.com";
+
 function App() {
   const [file, setFile] = useState(null);
-  const [sheetOptions, setSheetOptions] = useState([]);
+  const [sheets, setSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
-  const [columnOptions, setColumnOptions] = useState([]);
+  const [columns, setColumns] = useState([]);
   const [selectedField, setSelectedField] = useState("");
-  const [query, setQuery] = useState("");
-  const [exactMatch, setExactMatch] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState([]);
-  const [showColumnSelect, setShowColumnSelect] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
-  const [statusMessage, setStatusMessage] = useState("");
 
-  const backendUrl = "https://excel-app-backend.onrender.com";
-
-  const handleFileUpload = async (e) => {
-    const uploadedFile = e.target.files[0];
-    setFile(uploadedFile);
+  const uploadFile = async () => {
     const formData = new FormData();
-    formData.append("file", uploadedFile);
+    formData.append("file", file);
     try {
-      const res = await axios.post(`${backendUrl}/upload/`, formData);
-      setSheetOptions(res.data.sheets);
-      setStatusMessage("✅ File uploaded. Now select a sheet.");
-    } catch {
-      setStatusMessage("❌ Upload failed");
+      const res = await axios.post(`${API_BASE}/upload/`, formData);
+      alert(res.data.message);
+      setSheets(res.data.sheets);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Upload failed.");
     }
   };
 
-  const handleSheetSelection = async (e) => {
-    const sheet = e.target.value;
-    setSelectedSheet(sheet);
+  const selectSheet = async () => {
+    const formData = new FormData();
+    formData.append("sheet_name", selectedSheet);
     try {
-      const res = await axios.post(`${backendUrl}/select-sheet/?sheet_name=${sheet}`);
-      setColumnOptions(res.data.columns);
-      setStatusMessage("✅ Sheet loaded. Now select a field.");
-    } catch {
-      setStatusMessage("❌ Sheet load failed");
+      const res = await axios.post(`${API_BASE}/select-sheet/`, formData);
+      alert(res.data.message);
+      setColumns(res.data.columns);
+    } catch (err) {
+      console.error("Sheet selection failed:", err);
+      alert("Sheet selection failed.");
     }
   };
 
-  const handleSearch = async () => {
-    if (!selectedField || !query) return;
+  const searchData = async () => {
     try {
-      const params = new URLSearchParams({
-        field_name: selectedField,
-        query,
-        exact: exactMatch
+      const res = await axios.get(`${API_BASE}/search/`, {
+        params: { field_name: selectedField, query: searchQuery },
       });
-      if (showColumnSelect && selectedColumns.length > 0) {
-        params.append("columns", selectedColumns.join(","));
-      }
-      const res = await axios.get(`${backendUrl}/search/?${params.toString()}`);
       setResults(res.data);
-      setStatusMessage(`🔍 Showing ${res.data.length} result(s).`);
-    } catch {
-      setStatusMessage("❌ Search failed.");
+    } catch (err) {
+      console.error("Search failed:", err);
+      alert("Search failed.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <h1 className="text-2xl font-bold text-center mb-4">Excel Data Explorer</h1>
+    <div style={{ padding: "20px" }}>
+      <h2>📊 Excel Data Explorer</h2>
 
-      <div className="text-center text-sm text-green-600 mb-4">{statusMessage}</div>
+      <input
+        type="file"
+        accept=".xlsx, .xls"
+        onChange={(e) => setFile(e.target.files[0])}
+      />
+      <button onClick={uploadFile}>Upload Excel</button>
 
-      <div className="flex flex-col items-center gap-4 mb-6">
-        <input type="file" accept=".xlsx" onChange={handleFileUpload} />
-
-        {sheetOptions.length > 0 && (
-          <select onChange={handleSheetSelection} className="p-2 border rounded w-64">
-            <option value="">Select Sheet</option>
-            {sheetOptions.map((sheet) => (
-              <option key={sheet} value={sheet}>{sheet}</option>
+      {sheets.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <label>Select Sheet: </label>
+          <select
+            value={selectedSheet}
+            onChange={(e) => setSelectedSheet(e.target.value)}
+          >
+            <option value="">--Choose Sheet--</option>
+            {sheets.map((sheet, i) => (
+              <option key={i} value={sheet}>
+                {sheet}
+              </option>
             ))}
           </select>
-        )}
+          <button disabled={!selectedSheet} onClick={selectSheet}>
+            Load Sheet
+          </button>
+        </div>
+      )}
 
-        {columnOptions.length > 0 && (
-          <>
-            <select onChange={(e) => setSelectedField(e.target.value)} className="p-2 border rounded w-64">
-              <option value="">Select Field</option>
-              {columnOptions.map((col) => (
-                <option key={col} value={col}>{col}</option>
-              ))}
-            </select>
+      {columns.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <label>Select Field: </label>
+          <select
+            value={selectedField}
+            onChange={(e) => setSelectedField(e.target.value)}
+          >
+            <option value="">--Choose Field--</option>
+            {columns.map((col, i) => (
+              <option key={i} value={col}>
+                {col}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-            <input
-              type="text"
-              placeholder="Enter value"
-              className="p-2 border rounded w-64"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+      {selectedField && (
+        <div style={{ marginTop: "20px" }}>
+          <input
+            type="text"
+            placeholder={`Enter ${selectedField} to search`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button onClick={searchData}>Search</button>
+        </div>
+      )}
 
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} />
-              Exact match
-            </label>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-                onClick={() => {
-                  setShowColumnSelect(false);
-                  handleSearch();
-                }}
-              >
-                Search All Columns
-              </button>
-              <button
-                className="bg-gray-700 text-white px-4 py-2 rounded"
-                onClick={() => setShowColumnSelect(true)}
-              >
-                Choose Columns
-              </button>
-            </div>
-
-            {showColumnSelect && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full max-w-md text-left">
-                {columnOptions.map((col) => (
-                  <label key={col} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      value={col}
-                      checked={selectedColumns.includes(col)}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedColumns((prev) =>
-                          prev.includes(val)
-                            ? prev.filter((v) => v !== val)
-                            : [...prev, val]
-                        );
-                      }}
-                    />
-                    {col}
-                  </label>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="overflow-auto max-w-full">
-        {results.length > 0 && (
-          <table className="table-auto mx-auto text-sm border border-gray-300">
-            <thead className="bg-gray-200">
+      <div style={{ marginTop: "30px" }}>
+        {results.length > 0 ? (
+          <table border="1" cellPadding="6">
+            <thead>
               <tr>
-                {Object.keys(results[0]).map((col) => (
-                  <th key={col} className="border px-2 py-1">{col}</th>
+                {Object.keys(results[0]).map((col, idx) => (
+                  <th key={idx}>{col}</th>
                 ))}
               </tr>
             </thead>
@@ -159,12 +124,14 @@ function App() {
               {results.map((row, i) => (
                 <tr key={i}>
                   {Object.values(row).map((val, j) => (
-                    <td key={j} className="border px-2 py-1">{val}</td>
+                    <td key={j}>{val}</td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
+        ) : (
+          <p>No results to display.</p>
         )}
       </div>
     </div>
