@@ -59,4 +59,8 @@ def search(field_name: str = Query(...), query: str = Query(...)):
     matches = data_df[
         data_df[field_name].astype(str).str.contains(query, case=False, na=False)
     ]
-    return JSONResponse(content=matches.replace({np.nan: None}).to_dict(orient="records"))
+
+    # Convert all values to strings to handle datetime, NaN, etc.
+    serializable_matches = matches.fillna("").astype(str).to_dict(orient="records")
+    return JSONResponse(content=serializable_matches)
+
