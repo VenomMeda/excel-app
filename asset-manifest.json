@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/excel-app/static/js/main.6ffa1b64.js",
-    "index.html": "/excel-app/index.html",
-    "main.6ffa1b64.js.map": "/excel-app/static/js/main.6ffa1b64.js.map"
+    "main.js": "/excel-frontend/static/js/main.9db08639.js",
+    "index.html": "/excel-frontend/index.html",
+    "main.9db08639.js.map": "/excel-frontend/static/js/main.9db08639.js.map"
   },
   "entrypoints": [
-    "static/js/main.6ffa1b64.js"
+    "static/js/main.9db08639.js"
   ]
 }
