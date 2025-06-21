@@ -10,7 +10,7 @@ app = FastAPI()
 # Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can restrict this later
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,10 +48,15 @@ async def select_sheet(sheet_name: str = Form(...)):
     return {"message": f"Sheet '{sheet_name}' loaded", "columns": list(df.columns)}
 
 @app.get("/search/")
-def search_village(village: str = Query(...)):
+def search(field_name: str = Query(...), query: str = Query(...)):
     global data_df
     if data_df.empty:
         return JSONResponse(status_code=400, content={"error": "No sheet selected or data unavailable"})
 
-    results = data_df[data_df["Village Name"].str.contains(village, case=False, na=False)]
-    return JSONResponse(content=results.replace({np.nan: None}).to_dict(orient="records"))
+    if field_name not in data_df.columns:
+        return JSONResponse(status_code=400, content={"error": f"Field '{field_name}' not found"})
+
+    matches = data_df[
+        data_df[field_name].astype(str).str.contains(query, case=False, na=False)
+    ]
+    return JSONResponse(content=matches.replace({np.nan: None}).to_dict(orient="records"))

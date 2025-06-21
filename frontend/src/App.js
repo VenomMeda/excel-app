@@ -7,7 +7,9 @@ function App() {
   const [file, setFile] = useState(null);
   const [sheets, setSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
-  const [village, setVillage] = useState("");
+  const [columns, setColumns] = useState([]);
+  const [selectedField, setSelectedField] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
 
   const uploadFile = async () => {
@@ -29,16 +31,17 @@ function App() {
     try {
       const res = await axios.post(`${API_BASE}/select-sheet/`, formData);
       alert(res.data.message);
+      setColumns(res.data.columns);
     } catch (err) {
       console.error("Sheet selection failed:", err);
       alert("Sheet selection failed.");
     }
   };
 
-  const searchVillage = async () => {
+  const searchData = async () => {
     try {
       const res = await axios.get(`${API_BASE}/search/`, {
-        params: { village },
+        params: { field_name: selectedField, query: searchQuery },
       });
       setResults(res.data);
     } catch (err) {
@@ -49,7 +52,7 @@ function App() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>📁 Excel Village Lookup App</h2>
+      <h2>📊 Excel Data Explorer</h2>
 
       <input
         type="file"
@@ -59,38 +62,55 @@ function App() {
       <button onClick={uploadFile}>Upload Excel</button>
 
       {sheets.length > 0 && (
-        <>
-          <div style={{ marginTop: "20px" }}>
-            <label>Select Sheet: </label>
-            <select
-              value={selectedSheet}
-              onChange={(e) => setSelectedSheet(e.target.value)}
-            >
-              <option value="">--Choose Sheet--</option>
-              {sheets.map((s, idx) => (
-                <option key={idx} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <button disabled={!selectedSheet} onClick={selectSheet}>
-              Load Sheet
-            </button>
-          </div>
-        </>
+        <div style={{ marginTop: "20px" }}>
+          <label>Select Sheet: </label>
+          <select
+            value={selectedSheet}
+            onChange={(e) => setSelectedSheet(e.target.value)}
+          >
+            <option value="">--Choose Sheet--</option>
+            {sheets.map((sheet, i) => (
+              <option key={i} value={sheet}>
+                {sheet}
+              </option>
+            ))}
+          </select>
+          <button disabled={!selectedSheet} onClick={selectSheet}>
+            Load Sheet
+          </button>
+        </div>
       )}
 
-      <div style={{ marginTop: "20px" }}>
-        <input
-          type="text"
-          placeholder="Search village..."
-          value={village}
-          onChange={(e) => setVillage(e.target.value)}
-        />
-        <button onClick={searchVillage}>Search</button>
-      </div>
+      {columns.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <label>Select Field: </label>
+          <select
+            value={selectedField}
+            onChange={(e) => setSelectedField(e.target.value)}
+          >
+            <option value="">--Choose Field--</option>
+            {columns.map((col, i) => (
+              <option key={i} value={col}>
+                {col}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-      <div style={{ marginTop: "20px" }}>
+      {selectedField && (
+        <div style={{ marginTop: "20px" }}>
+          <input
+            type="text"
+            placeholder={`Enter ${selectedField} to search`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button onClick={searchData}>Search</button>
+        </div>
+      )}
+
+      <div style={{ marginTop: "30px" }}>
         {results.length > 0 ? (
           <table border="1" cellPadding="6">
             <thead>
