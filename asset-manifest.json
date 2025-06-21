@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/excel-frontend/static/js/main.6ffa1b64.js",
+    "index.html": "/excel-frontend/index.html",
+    "main.6ffa1b64.js.map": "/excel-frontend/static/js/main.6ffa1b64.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.6ffa1b64.js"
+  ]
+}
