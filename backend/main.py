@@ -1,41 +1,57 @@
-from fastapi import FastAPI, UploadFile, File, Query
+from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
-import io
+from io import BytesIO
+import numpy as np
 
 app = FastAPI()
 
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # You can restrict this later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Globals
+excel_bytes = None
+excel_sheets = []
 data_df = pd.DataFrame()
+
+@app.get("/")
+def read_root():
+    return {"message": "Excel backend is running"}
 
 @app.post("/upload/")
 async def upload_excel(file: UploadFile = File(...)):
-    global data_df
-    contents = await file.read()
-    excel_file = pd.ExcelFile(io.BytesIO(contents))
-    data_df = excel_file.parse("Data")
-    return {"columns": data_df.columns.tolist(), "rows": len(data_df)}
+    global excel_bytes, excel_sheets
+    excel_bytes = await file.read()
+    xls = pd.ExcelFile(BytesIO(excel_bytes))
+    excel_sheets = xls.sheet_names
+    return {"message": "File uploaded successfully", "sheets": excel_sheets}
 
-from fastapi.responses import JSONResponse
-import numpy as np
+@app.post("/select-sheet/")
+async def select_sheet(sheet_name: str = Form(...)):
+    global data_df, excel_bytes
+    if not excel_bytes:
+        return JSONResponse(status_code=400, content={"error": "No file uploaded"})
+
+    xls = pd.ExcelFile(BytesIO(excel_bytes))
+    if sheet_name not in xls.sheet_names:
+        return JSONResponse(status_code=400, content={"error": f"Sheet '{sheet_name}' not found"})
+
+    df = xls.parse(sheet_name)
+    data_df = df
+    return {"message": f"Sheet '{sheet_name}' loaded", "columns": list(df.columns)}
 
 @app.get("/search/")
 def search_village(village: str = Query(...)):
     global data_df
     if data_df.empty:
-        return JSONResponse(status_code=400, content={"error": "No Excel uploaded"})
-    
+        return JSONResponse(status_code=400, content={"error": "No sheet selected or data unavailable"})
+
     results = data_df[data_df["Village Name"].str.contains(village, case=False, na=False)]
-
-    # Replace NaN/NaT/inf values with empty strings so it's JSON serializable
-    clean_results = results.replace({np.nan: None}).to_dict(orient="records")
-
-    return JSONResponse(content=clean_results)
+    return JSONResponse(content=results.replace({np.nan: None}).to_dict(orient="records"))
