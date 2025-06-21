@@ -5,14 +5,29 @@ const API_BASE = "https://excel-app-backend.onrender.com";
 
 function App() {
   const [file, setFile] = useState(null);
+  const [sheets, setSheets] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState("");
   const [village, setVillage] = useState("");
   const [results, setResults] = useState([]);
+  const [step, setStep] = useState("upload");
 
   const uploadFile = async () => {
     const formData = new FormData();
     formData.append("file", file);
-    await axios.post(`${API_BASE}/upload/`, formData);
-    alert("Uploaded successfully");
+    const res = await axios.post(`${API_BASE}/upload/`, formData);
+    if (res.data.sheets.length === 1) {
+      await selectSheet(res.data.sheets[0]);
+    } else {
+      setSheets(res.data.sheets);
+      setStep("selectSheet");
+    }
+  };
+
+  const selectSheet = async (sheetName) => {
+    await axios.post(`${API_BASE}/select-sheet/`, { sheet_name: sheetName });
+    setSelectedSheet(sheetName);
+    setStep("search");
+    alert(`Sheet "${sheetName}" selected`);
   };
 
   const searchVillage = async () => {
@@ -26,39 +41,57 @@ function App() {
     <div style={{ padding: "2rem" }}>
       <h2>📊 Excel Data Search</h2>
 
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <button onClick={uploadFile}>Upload Excel</button>
+      {step === "upload" && (
+        <>
+          <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+          <button onClick={uploadFile}>Upload Excel</button>
+        </>
+      )}
 
-      <br /><br />
+      {step === "selectSheet" && (
+        <>
+          <h3>Select a sheet:</h3>
+          {sheets.map((sheet) => (
+            <button key={sheet} onClick={() => selectSheet(sheet)}>
+              {sheet}
+            </button>
+          ))}
+        </>
+      )}
 
-      <input
-        type="text"
-        placeholder="Enter village name"
-        value={village}
-        onChange={(e) => setVillage(e.target.value)}
-      />
-      <button onClick={searchVillage}>Search</button>
+      {step === "search" && (
+        <>
+          <input
+            type="text"
+            placeholder="Enter village name"
+            value={village}
+            onChange={(e) => setVillage(e.target.value)}
+          />
+          <button onClick={searchVillage}>Search</button>
 
-      <br /><br />
-      {results.length > 0 && (
-        <table border="1" cellPadding="5">
-          <thead>
-            <tr>
-              {Object.keys(results[0]).map((key) => (
-                <th key={key}>{key}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((row, i) => (
-              <tr key={i}>
-                {Object.values(row).map((val, j) => (
-                  <td key={j}>{val}</td>
+          <br />
+          <br />
+          {results.length > 0 && (
+            <table border="1" cellPadding="5">
+              <thead>
+                <tr>
+                  {Object.keys(results[0]).map((key) => (
+                    <th key={key}>{key}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((row, i) => (
+                  <tr key={i}>
+                    {Object.values(row).map((val, j) => (
+                      <td key={j}>{val}</td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );
