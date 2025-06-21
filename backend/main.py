@@ -1,9 +1,9 @@
-from fastapi import FastAPI, File, UploadFile, Form, Query
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
-from io import BytesIO
 import numpy as np
+import datetime
 
 app = FastAPI()
 
@@ -11,56 +11,45 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Globals
-excel_bytes = None
-excel_sheets = []
-data_df = pd.DataFrame()
-
-@app.get("/")
-def read_root():
-    return {"message": "Excel backend is running"}
+storage = {"df": None}
 
 @app.post("/upload/")
 async def upload_excel(file: UploadFile = File(...)):
-    global excel_bytes, excel_sheets
-    excel_bytes = await file.read()
-    xls = pd.ExcelFile(BytesIO(excel_bytes))
-    excel_sheets = xls.sheet_names
-    return {"message": "File uploaded successfully", "sheets": excel_sheets}
+    contents = await file.read()
+    excel_file = pd.ExcelFile(contents)
+    storage["excel"] = excel_file
+    return {"sheets": excel_file.sheet_names}
 
 @app.post("/select-sheet/")
-async def select_sheet(sheet_name: str = Form(...)):
-    global data_df, excel_bytes
-    if not excel_bytes:
-        return JSONResponse(status_code=400, content={"error": "No file uploaded"})
-
-    xls = pd.ExcelFile(BytesIO(excel_bytes))
-    if sheet_name not in xls.sheet_names:
-        return JSONResponse(status_code=400, content={"error": f"Sheet '{sheet_name}' not found"})
-
-    df = xls.parse(sheet_name)
-    data_df = df
-    return {"message": f"Sheet '{sheet_name}' loaded", "columns": list(df.columns)}
+async def select_sheet(request: Request):
+    sheet_name = request.query_params.get("sheet_name")
+    df = pd.read_excel(storage["excel"], sheet_name=sheet_name)
+    storage["df"] = df
+    return {"columns": df.columns.tolist()}
 
 @app.get("/search/")
-def search(field_name: str = Query(...), query: str = Query(...)):
-    global data_df
-    if data_df.empty:
-        return JSONResponse(status_code=400, content={"error": "No sheet selected or data unavailable"})
+def search(field_name: str, query: str, exact: bool = False, columns: str = ""):
+    df = storage["df"]
+    if exact:
+        matches = df[df[field_name].astype(str) == query]
+    else:
+        matches = df[df[field_name].astype(str).str.contains(query, case=False, na=False)]
+    
+    if columns:
+        col_list = columns.split(",")
+        matches = matches[col_list]
 
-    if field_name not in data_df.columns:
-        return JSONResponse(status_code=400, content={"error": f"Field '{field_name}' not found"})
+    # Convert datetime and NaN
+    def safe_convert(val):
+        if isinstance(val, (datetime.datetime, datetime.date)):
+            return val.isoformat()
+        elif pd.isna(val):
+            return None
+        return val
 
-    matches = data_df[
-        data_df[field_name].astype(str).str.contains(query, case=False, na=False)
-    ]
-
-    # Convert all values to strings to handle datetime, NaN, etc.
-    serializable_matches = matches.fillna("").astype(str).to_dict(orient="records")
-    return JSONResponse(content=serializable_matches)
-
+    json_ready = matches.fillna(np.nan).replace({np.nan: None}).applymap(safe_convert).to_dict(orient="records")
+    return JSONResponse(content=json_ready)
