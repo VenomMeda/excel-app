@@ -14,7 +14,7 @@ function App() {
   const [results, setResults] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
 
-  const backendUrl = "https://<your-render-backend-url>";
+  const backendUrl = "https://excel-app-backend.onrender.com";
 
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files[0];
