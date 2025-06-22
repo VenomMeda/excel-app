@@ -1,63 +1,73 @@
 # === backend/main.py ===
-from fastapi import FastAPI, File, UploadFile, Form, Request
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from typing import List, Optional
 import pandas as pd
-from typing import Optional
+import uvicorn
+import os
 
 app = FastAPI()
+
+# Temporary store
+session_data = {
+    "df": None,
+    "columns": [],
+}
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-df = pd.DataFrame()
-
 @app.post("/upload/")
-async def upload(file: UploadFile = File(...)):
-    global df
+async def upload_excel(file: UploadFile = File(...)):
     contents = await file.read()
-    excel_data = pd.ExcelFile(contents)
-    return {"sheets": excel_data.sheet_names}
+    with open("temp.xlsx", "wb") as f:
+        f.write(contents)
+
+    try:
+        excel_file = pd.ExcelFile("temp.xlsx")
+        return {"sheets": excel_file.sheet_names}
+    except Exception as e:
+        return {"error": f"Failed to read Excel: {str(e)}"}
 
 @app.post("/select-sheet/")
-async def select_sheet(sheet_name: str = Form(...), file: UploadFile = File(None)):
-    global df
-    if file:
-        contents = await file.read()
-        excel_data = pd.ExcelFile(contents)
-        df = excel_data.parse(sheet_name)
-    else:
+async def select_sheet(sheet_name: str = Form(...)):
+    try:
         df = pd.read_excel("temp.xlsx", sheet_name=sheet_name)
-    return {"columns": df.columns.tolist()}
+        session_data["df"] = df
+        session_data["columns"] = df.columns.tolist()
+        return {"columns": session_data["columns"]}
+    except Exception as e:
+        return {"error": f"Failed to load sheet: {str(e)}"}
 
 @app.get("/search/")
-async def search(request: Request):
-    global df
-    filters: Optional[str] = request.query_params.get("filters")
-    columns: Optional[str] = request.query_params.get("columns")
+def search_data(filters: Optional[str] = None, columns: Optional[str] = None):
+    df = session_data.get("df")
+    if df is None:
+        return []
 
-    if df.empty:
-        return JSONResponse(status_code=400, content={"error": "No data loaded"})
-
-    filtered_df = df.copy()
+    result_df = df.copy()
 
     if filters:
-        try:
-            for clause in filters.split("||"):
-                if ":" in clause:
-                    field, query = clause.split(":", 1)
-                    filtered_df = filtered_df[filtered_df[field].astype(str).str.contains(query, case=False, na=False)]
-        except Exception as e:
-            return JSONResponse(status_code=400, content={"error": f"Invalid filter: {str(e)}"})
+        for cond in filters.split("||"):
+            try:
+                field, query = cond.split(":", 1)
+                if field in result_df.columns:
+                    result_df = result_df[
+                        result_df[field].astype(str).str.contains(query, case=False, na=False)
+                    ]
+            except Exception:
+                continue
 
     if columns:
-        col_list = [c.strip() for c in columns.split(",") if c.strip() in filtered_df.columns]
-        if col_list:
-            filtered_df = filtered_df[col_list]
+        cols = [col.strip() for col in columns.split(",") if col.strip() in result_df.columns]
+        if cols:
+            result_df = result_df[cols]
 
-    return filtered_df.fillna("").to_dict(orient="records")
+    return result_df.fillna("").to_dict(orient="records")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
