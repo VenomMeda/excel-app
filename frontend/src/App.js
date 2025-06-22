@@ -15,7 +15,7 @@ function App() {
   const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
-  const [displayMode, setDisplayMode] = useState("wide"); // new toggle state
+  const [tableLayout, setTableLayout] = useState("wide");
 
   const uploadFile = async () => {
     const formData = new FormData();
@@ -48,7 +48,6 @@ function App() {
       const params = {
         field_name: selectedField,
         query: searchQuery,
-        match_type: "partial",
       };
       if (showColumnSelect && selectedColumns.length > 0) {
         params.columns = selectedColumns.join(",");
@@ -173,45 +172,57 @@ function App() {
                 </button>
               </>
             )}
+
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <span className="text-sm">🧭 Table Layout:</span>
+              <select
+                className="p-1 border rounded"
+                value={tableLayout}
+                onChange={(e) => setTableLayout(e.target.value)}
+              >
+                <option value="wide">Wide (Full Width)</option>
+                <option value="vertical">Vertical Cards</option>
+              </select>
+            </div>
           </>
         )}
 
-        <div className="mt-4">
-          <label className="text-sm">📐 Table Layout: </label>
-          <select
-            className="border p-1 rounded"
-            value={displayMode}
-            onChange={(e) => setDisplayMode(e.target.value)}
-          >
-            <option value="wide">Wide (Full Width)</option>
-            <option value="scroll">Scrollable</option>
-          </select>
-        </div>
-
         {results.length > 0 && (
-          <div
-            className={`mt-6 w-full ${
-              displayMode === "scroll" ? "overflow-x-auto" : "overflow-x-visible"
-            }`}
-          >
-            <table className="min-w-full text-sm border border-gray-300">
-              <thead className="bg-gray-200">
-                <tr>
-                  {Object.keys(results[0]).map((col, i) => (
-                    <th key={i} className="px-2 py-1 border whitespace-nowrap">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((row, i) => (
-                  <tr key={i} className="odd:bg-white even:bg-gray-50">
-                    {Object.values(row).map((val, j) => (
-                      <td key={j} className="px-2 py-1 border whitespace-nowrap">{val}</td>
+          <div className="mt-6 w-full">
+            {tableLayout === "wide" ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-gray-300 mx-auto">
+                  <thead className="bg-gray-200">
+                    <tr>
+                      {Object.keys(results[0]).map((col, i) => (
+                        <th key={i} className="px-2 py-1 border whitespace-nowrap">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((row, i) => (
+                      <tr key={i} className="odd:bg-white even:bg-gray-50">
+                        {Object.values(row).map((val, j) => (
+                          <td key={j} className="px-2 py-1 border whitespace-nowrap">{val}</td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {results.map((row, i) => (
+                  <div key={i} className="border rounded p-4 bg-white shadow">
+                    {Object.entries(row).map(([key, val], j) => (
+                      <div key={j} className="mb-1">
+                        <span className="font-semibold">{key}:</span> {val}
+                      </div>
+                    ))}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
         )}
       </div>
