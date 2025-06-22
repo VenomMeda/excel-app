@@ -7,7 +7,7 @@ import numpy as np
 
 app = FastAPI()
 
-# Allow frontend access
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Globals
+# Global state
 excel_bytes = None
 excel_sheets = []
 data_df = pd.DataFrame()
@@ -48,7 +48,7 @@ async def select_sheet(sheet_name: str = Form(...)):
     return {"message": f"Sheet '{sheet_name}' loaded", "columns": list(df.columns)}
 
 @app.get("/search/")
-def search(field_name: str = Query(...), query: str = Query(...)):
+def search(field_name: str = Query(...), query: str = Query(...), columns: str = Query(None)):
     global data_df
     if data_df.empty:
         return JSONResponse(status_code=400, content={"error": "No sheet selected or data unavailable"})
@@ -60,7 +60,11 @@ def search(field_name: str = Query(...), query: str = Query(...)):
         data_df[field_name].astype(str).str.contains(query, case=False, na=False)
     ]
 
-    # Convert all values to strings to handle datetime, NaN, etc.
+    # Filter to selected columns
+    if columns:
+        requested_columns = [col.strip() for col in columns.split(",") if col.strip() in matches.columns]
+        matches = matches[requested_columns]
+
+    # Ensure all data is JSON serializable
     serializable_matches = matches.fillna("").astype(str).to_dict(orient="records")
     return JSONResponse(content=serializable_matches)
-
