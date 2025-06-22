@@ -9,13 +9,12 @@ function App() {
   const [sheets, setSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [columns, setColumns] = useState([]);
-  const [selectedField, setSelectedField] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFields, setSearchFields] = useState([{ field: "", query: "" }]);
   const [results, setResults] = useState([]);
-  const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState([]);
+  const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [tableLayout, setTableLayout] = useState("wide");
+  const [layoutMode, setLayoutMode] = useState("wide");
 
   const uploadFile = async () => {
     const formData = new FormData();
@@ -45,13 +44,19 @@ function App() {
 
   const searchData = async () => {
     try {
+      const filters = searchFields
+        .filter((sf) => sf.field && sf.query)
+        .map((sf) => `${sf.field}:${sf.query}`)
+        .join("||");
+
       const params = {
-        field_name: selectedField,
-        query: searchQuery,
+        filters,
       };
+
       if (showColumnSelect && selectedColumns.length > 0) {
         params.columns = selectedColumns.join(",");
       }
+
       const res = await axios.get(`${API_BASE}/search/`, { params });
       setResults(res.data);
       setStatusMessage(`🔍 Found ${res.data.length} results`);
@@ -61,13 +66,27 @@ function App() {
     }
   };
 
+  const handleFieldChange = (index, field, value) => {
+    const updated = [...searchFields];
+    updated[index][field] = value;
+    setSearchFields(updated);
+  };
+
+  const addSearchField = () => {
+    setSearchFields([...searchFields, { field: "", query: "" }]);
+  };
+
+  const removeSearchField = (index) => {
+    setSearchFields(searchFields.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 text-center flex flex-col items-center">
       <h1 className="text-2xl font-bold mb-4">Excel Data Explorer</h1>
 
       <p className="text-sm text-green-600 mb-2">{statusMessage}</p>
 
-      <div className="w-full max-w-md flex flex-col gap-4">
+      <div className="w-full max-w-xl flex flex-col gap-4">
         <input
           type="file"
           accept=".xlsx, .xls"
@@ -105,24 +124,39 @@ function App() {
 
         {columns.length > 0 && (
           <>
-            <select
-              className="w-full border rounded p-2"
-              value={selectedField}
-              onChange={(e) => setSelectedField(e.target.value)}
+            {searchFields.map((sf, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <select
+                  className="w-1/2 border rounded p-2"
+                  value={sf.field}
+                  onChange={(e) => handleFieldChange(i, "field", e.target.value)}
+                >
+                  <option value="">-- Choose Field --</option>
+                  {columns.map((col, j) => (
+                    <option key={j} value={col}>{col}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="w-1/2 border rounded p-2"
+                  placeholder="Search..."
+                  value={sf.query}
+                  onChange={(e) => handleFieldChange(i, "query", e.target.value)}
+                />
+                {searchFields.length > 1 && (
+                  <button
+                    className="text-red-500 font-bold"
+                    onClick={() => removeSearchField(i)}
+                  >✕</button>
+                )}
+              </div>
+            ))}
+            <button
+              className="text-blue-500 text-sm underline"
+              onClick={addSearchField}
             >
-              <option value="">-- Choose Field --</option>
-              {columns.map((col, i) => (
-                <option key={i} value={col}>{col}</option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              placeholder="Enter value to search"
-              className="w-full border rounded p-2"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+              + Add another field
+            </button>
 
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
@@ -174,11 +208,11 @@ function App() {
             )}
 
             <div className="flex items-center justify-center gap-2 mt-4">
-              <span className="text-sm">🧭 Table Layout:</span>
+              <label className="text-sm">📐 Table Layout:</label>
               <select
-                className="p-1 border rounded"
-                value={tableLayout}
-                onChange={(e) => setTableLayout(e.target.value)}
+                className="border rounded p-1 text-sm"
+                value={layoutMode}
+                onChange={(e) => setLayoutMode(e.target.value)}
               >
                 <option value="wide">Wide (Full Width)</option>
                 <option value="vertical">Vertical Cards</option>
@@ -189,9 +223,9 @@ function App() {
 
         {results.length > 0 && (
           <div className="mt-6 w-full">
-            {tableLayout === "wide" ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-300 mx-auto">
+            {layoutMode === "wide" ? (
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm border border-gray-300">
                   <thead className="bg-gray-200">
                     <tr>
                       {Object.keys(results[0]).map((col, i) => (
@@ -213,10 +247,10 @@ function App() {
             ) : (
               <div className="flex flex-col gap-4">
                 {results.map((row, i) => (
-                  <div key={i} className="border rounded p-4 bg-white shadow">
+                  <div key={i} className="bg-white rounded shadow p-4 border">
                     {Object.entries(row).map(([key, val], j) => (
-                      <div key={j} className="mb-1">
-                        <span className="font-semibold">{key}:</span> {val}
+                      <div key={j} className="mb-1 text-left">
+                        <strong>{key}:</strong> {val}
                       </div>
                     ))}
                   </div>

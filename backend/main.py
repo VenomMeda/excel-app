@@ -1,10 +1,9 @@
 # === backend/main.py ===
-from fastapi import FastAPI, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import List, Optional
 import pandas as pd
-import io
+from typing import Optional
 
 app = FastAPI()
 
@@ -16,38 +15,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-uploaded_df = {}
+df = pd.DataFrame()
 
 @app.post("/upload/")
-async def upload_file(file: UploadFile):
+async def upload(file: UploadFile = File(...)):
+    global df
     contents = await file.read()
-    excel_data = pd.read_excel(io.BytesIO(contents), sheet_name=None)
-    uploaded_df["excel"] = excel_data
-    return {"sheets": list(excel_data.keys())}
+    excel_data = pd.ExcelFile(contents)
+    return {"sheets": excel_data.sheet_names}
 
 @app.post("/select-sheet/")
-async def select_sheet(sheet_name: str = Form(...)):
-    if "excel" not in uploaded_df or sheet_name not in uploaded_df["excel"]:
-        return JSONResponse(status_code=400, content={"error": "Sheet not found"})
-    df = uploaded_df["excel"][sheet_name]
-    uploaded_df["df"] = df
+async def select_sheet(sheet_name: str = Form(...), file: UploadFile = File(None)):
+    global df
+    if file:
+        contents = await file.read()
+        excel_data = pd.ExcelFile(contents)
+        df = excel_data.parse(sheet_name)
+    else:
+        df = pd.read_excel("temp.xlsx", sheet_name=sheet_name)
     return {"columns": df.columns.tolist()}
 
 @app.get("/search/")
-async def search(field_name: str, query: str, columns: Optional[str] = None):
-    if "df" not in uploaded_df:
+async def search(request: Request):
+    global df
+    filters: Optional[str] = request.query_params.get("filters")
+    columns: Optional[str] = request.query_params.get("columns")
+
+    if df.empty:
         return JSONResponse(status_code=400, content={"error": "No data loaded"})
 
-    df = uploaded_df["df"]
-    query = query.strip().lower()
+    filtered_df = df.copy()
 
-    try:
-        matched_df = df[df[field_name].astype(str).str.lower().str.contains(query)]
-    except Exception as e:
-        return JSONResponse(status_code=400, content={"error": str(e)})
+    if filters:
+        try:
+            for clause in filters.split("||"):
+                if ":" in clause:
+                    field, query = clause.split(":", 1)
+                    filtered_df = filtered_df[filtered_df[field].astype(str).str.contains(query, case=False, na=False)]
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"error": f"Invalid filter: {str(e)}"})
 
     if columns:
-        column_list = [col.strip() for col in columns.split(",") if col.strip() in matched_df.columns]
-        matched_df = matched_df[column_list]
+        col_list = [c.strip() for c in columns.split(",") if c.strip() in filtered_df.columns]
+        if col_list:
+            filtered_df = filtered_df[col_list]
 
-    return matched_df.fillna("").to_dict(orient="records")
+    return filtered_df.fillna("").to_dict(orient="records")
