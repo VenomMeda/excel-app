@@ -1,3 +1,4 @@
+# === main.py ===
 from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -6,7 +7,7 @@ from io import BytesIO
 
 app = FastAPI()
 
-# Allow all origins for development purposes
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,13 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global variables to hold state
+# Globals
 excel_bytes = None
 excel_sheets = []
 data_df = pd.DataFrame()
 
 @app.get("/")
-def root():
+def read_root():
     return {"message": "Excel backend is running"}
 
 @app.post("/upload/")
@@ -50,8 +51,7 @@ async def select_sheet(sheet_name: str = Form(...)):
 def search(
     field_name: str = Query(...),
     query: str = Query(...),
-    columns: str = Query(default=""),
-    match_type: str = Query(default="partial")  # "partial" or "exact"
+    columns: str = Query(None)
 ):
     global data_df
     if data_df.empty:
@@ -60,18 +60,13 @@ def search(
     if field_name not in data_df.columns:
         return JSONResponse(status_code=400, content={"error": f"Field '{field_name}' not found"})
 
-    df = data_df.copy()
-    df[field_name] = df[field_name].astype(str)
+    matches = data_df[
+        data_df[field_name].astype(str).str.contains(query, case=False, na=False)
+    ]
 
-    if match_type == "exact":
-        matches = df[df[field_name] == query]
-    else:
-        matches = df[df[field_name].str.contains(query, case=False, na=False)]
-
-    # Optional column filter
     if columns:
-        requested_columns = [col.strip() for col in columns.split(",") if col.strip() in df.columns]
-        matches = matches[requested_columns] if requested_columns else matches
+        selected_cols = [col.strip() for col in columns.split(",") if col.strip() in matches.columns]
+        matches = matches[selected_cols]
 
-    serializable = matches.fillna("").astype(str).to_dict(orient="records")
-    return JSONResponse(content=serializable)
+    serializable_matches = matches.fillna("").astype(str).to_dict(orient="records")
+    return JSONResponse(content=serializable_matches)

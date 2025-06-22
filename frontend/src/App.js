@@ -15,6 +15,7 @@ function App() {
   const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
+  const [displayMode, setDisplayMode] = useState("wide"); // new toggle state
 
   const uploadFile = async () => {
     const formData = new FormData();
@@ -47,6 +48,7 @@ function App() {
       const params = {
         field_name: selectedField,
         query: searchQuery,
+        match_type: "partial",
       };
       if (showColumnSelect && selectedColumns.length > 0) {
         params.columns = selectedColumns.join(",");
@@ -174,13 +176,29 @@ function App() {
           </>
         )}
 
+        <div className="mt-4">
+          <label className="text-sm">📐 Table Layout: </label>
+          <select
+            className="border p-1 rounded"
+            value={displayMode}
+            onChange={(e) => setDisplayMode(e.target.value)}
+          >
+            <option value="wide">Wide (Full Width)</option>
+            <option value="scroll">Scrollable</option>
+          </select>
+        </div>
+
         {results.length > 0 && (
-          <div className="overflow-auto mt-6 w-full">
+          <div
+            className={`mt-6 w-full ${
+              displayMode === "scroll" ? "overflow-x-auto" : "overflow-x-visible"
+            }`}
+          >
             <table className="min-w-full text-sm border border-gray-300">
               <thead className="bg-gray-200">
                 <tr>
                   {Object.keys(results[0]).map((col, i) => (
-                    <th key={i} className="px-2 py-1 border">{col}</th>
+                    <th key={i} className="px-2 py-1 border whitespace-nowrap">{col}</th>
                   ))}
                 </tr>
               </thead>
