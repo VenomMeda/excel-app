@@ -3,11 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
 from io import BytesIO
-import numpy as np
 
 app = FastAPI()
 
-# CORS
+# Allow all origins for development purposes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,13 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global state
+# Global variables to hold state
 excel_bytes = None
 excel_sheets = []
 data_df = pd.DataFrame()
 
 @app.get("/")
-def read_root():
+def root():
     return {"message": "Excel backend is running"}
 
 @app.post("/upload/")
@@ -48,7 +47,12 @@ async def select_sheet(sheet_name: str = Form(...)):
     return {"message": f"Sheet '{sheet_name}' loaded", "columns": list(df.columns)}
 
 @app.get("/search/")
-def search(field_name: str = Query(...), query: str = Query(...), columns: str = Query(None)):
+def search(
+    field_name: str = Query(...),
+    query: str = Query(...),
+    columns: str = Query(default=""),
+    match_type: str = Query(default="partial")  # "partial" or "exact"
+):
     global data_df
     if data_df.empty:
         return JSONResponse(status_code=400, content={"error": "No sheet selected or data unavailable"})
@@ -56,15 +60,18 @@ def search(field_name: str = Query(...), query: str = Query(...), columns: str =
     if field_name not in data_df.columns:
         return JSONResponse(status_code=400, content={"error": f"Field '{field_name}' not found"})
 
-    matches = data_df[
-        data_df[field_name].astype(str).str.contains(query, case=False, na=False)
-    ]
+    df = data_df.copy()
+    df[field_name] = df[field_name].astype(str)
 
-    # Filter to selected columns
+    if match_type == "exact":
+        matches = df[df[field_name] == query]
+    else:
+        matches = df[df[field_name].str.contains(query, case=False, na=False)]
+
+    # Optional column filter
     if columns:
-        requested_columns = [col.strip() for col in columns.split(",") if col.strip() in matches.columns]
-        matches = matches[requested_columns]
+        requested_columns = [col.strip() for col in columns.split(",") if col.strip() in df.columns]
+        matches = matches[requested_columns] if requested_columns else matches
 
-    # Ensure all data is JSON serializable
-    serializable_matches = matches.fillna("").astype(str).to_dict(orient="records")
-    return JSONResponse(content=serializable_matches)
+    serializable = matches.fillna("").astype(str).to_dict(orient="records")
+    return JSONResponse(content=serializable)

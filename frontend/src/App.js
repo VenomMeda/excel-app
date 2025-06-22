@@ -1,3 +1,4 @@
+// === frontend/src/App.js ===
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -60,12 +61,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 text-center">
+    <div className="min-h-screen bg-gray-100 p-4 text-center flex flex-col items-center">
       <h1 className="text-2xl font-bold mb-4">Excel Data Explorer</h1>
 
       <p className="text-sm text-green-600 mb-2">{statusMessage}</p>
 
-      <div className="flex flex-col items-center space-y-4">
+      <div className="w-full max-w-md flex flex-col gap-4">
         <input
           type="file"
           accept=".xlsx, .xls"
@@ -73,16 +74,16 @@ function App() {
           className="block w-full text-sm text-gray-500"
         />
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           onClick={uploadFile}
         >
           Upload Excel
         </button>
 
         {sheets.length > 0 && (
-          <div className="w-full max-w-sm">
+          <>
             <select
-              className="w-full border rounded p-2 mt-2"
+              className="w-full border rounded p-2"
               value={selectedSheet}
               onChange={(e) => setSelectedSheet(e.target.value)}
             >
@@ -92,19 +93,19 @@ function App() {
               ))}
             </select>
             <button
-              className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
               disabled={!selectedSheet}
               onClick={selectSheet}
             >
               Load Sheet
             </button>
-          </div>
+          </>
         )}
 
         {columns.length > 0 && (
-          <div className="w-full max-w-sm">
+          <>
             <select
-              className="w-full border rounded p-2 mt-4"
+              className="w-full border rounded p-2"
               value={selectedField}
               onChange={(e) => setSelectedField(e.target.value)}
             >
@@ -117,14 +118,14 @@ function App() {
             <input
               type="text"
               placeholder="Enter value to search"
-              className="w-full border rounded p-2 mt-2"
+              className="w-full border rounded p-2"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
 
-            <div className="flex justify-center mt-2 space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 onClick={() => {
                   setShowColumnSelect(false);
                   searchData();
@@ -133,7 +134,7 @@ function App() {
                 Search All Columns
               </button>
               <button
-                className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
                 onClick={() => setShowColumnSelect(true)}
               >
                 Choose Columns
@@ -141,28 +142,36 @@ function App() {
             </div>
 
             {showColumnSelect && (
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {columns.map((col) => (
-                  <label key={col} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      value={col}
-                      checked={selectedColumns.includes(col)}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedColumns((prev) =>
-                          prev.includes(val)
-                            ? prev.filter((c) => c !== val)
-                            : [...prev, val]
-                        );
-                      }}
-                    />
-                    <span>{col}</span>
-                  </label>
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 max-h-48 overflow-auto border p-2 rounded">
+                  {columns.map((col) => (
+                    <label key={col} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        value={col}
+                        checked={selectedColumns.includes(col)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedColumns((prev) =>
+                            prev.includes(val)
+                              ? prev.filter((c) => c !== val)
+                              : [...prev, val]
+                          );
+                        }}
+                      />
+                      <span>{col}</span>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                  onClick={searchData}
+                >
+                  Search Selected Columns
+                </button>
+              </>
             )}
-          </div>
+          </>
         )}
 
         {results.length > 0 && (
@@ -177,9 +186,9 @@ function App() {
               </thead>
               <tbody>
                 {results.map((row, i) => (
-                  <tr key={i}>
+                  <tr key={i} className="odd:bg-white even:bg-gray-50">
                     {Object.values(row).map((val, j) => (
-                      <td key={j} className="px-2 py-1 border">{val}</td>
+                      <td key={j} className="px-2 py-1 border whitespace-nowrap">{val}</td>
                     ))}
                   </tr>
                 ))}
