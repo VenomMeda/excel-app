@@ -11,13 +11,23 @@ const Loader = () => (
   </div>
 );
 
-const StatusMessage = ({ type, msg, persistent }) => {
+const StatusMessage = ({ type, msg, persistent, isDark }) => {
   if (!msg) return null;
-  const colors = {
+  
+  const lightColors = {
     success: "bg-green-100 text-green-700 border-green-400",
     error: "bg-red-100 text-red-700 border-red-400",
     info: "bg-blue-100 text-blue-700 border-blue-400",
   };
+  
+  const darkColors = {
+    success: "bg-green-900 bg-opacity-30 text-green-300 border-green-800",
+    error: "bg-red-900 bg-opacity-30 text-red-300 border-red-800",
+    info: "bg-blue-900 bg-opacity-30 text-blue-300 border-blue-800",
+  };
+  
+  const colors = isDark ? darkColors : lightColors;
+  
   return (
     <div
       className={`border rounded px-3 py-2 text-sm transition-all duration-500 ease-in-out ${colors[type] || ""} mb-3 shadow`}
@@ -201,12 +211,12 @@ function App() {
   return (
     <div className={
       `min-h-screen p-2 sm:p-4 flex flex-col items-center transition-colors duration-300 ` +
-      (darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-purple-100')
+      (darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gradient-to-br from-blue-50 to-purple-100 text-gray-900')
     }>
       <div className={
         `w-full max-w-full xl:max-w-7xl shadow-lg p-2 sm:p-6 mt-4 sm:mt-8 mb-4 sm:mb-8 border ` +
         (darkMode
-          ? 'bg-gray-900 border-gray-700 text-gray-100'
+          ? 'bg-gray-800 border-gray-700 text-gray-100'
           : 'bg-white rounded-none xl:rounded-2xl border-gray-200 text-gray-900')
       }>
         <div className="flex justify-between items-center mb-2">
@@ -226,7 +236,7 @@ function App() {
             )}
           </button>
         </div>
-        <p className="text-center text-gray-500 mb-6 text-base">
+        <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-base">
           Upload your Excel file, select a sheet, and search your data instantly.
         </p>
 
@@ -236,7 +246,11 @@ function App() {
             type="file"
             accept=".xlsx,.xls"
             onChange={(e) => setFile(e.target.files[0])}
-            className="block w-full sm:w-auto border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className={`block w-full sm:w-auto border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+              darkMode 
+                ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                : 'border-gray-300'
+            }`}
           />
           <button
             onClick={uploadFile}
@@ -246,7 +260,7 @@ function App() {
           </button>
         </div>
         {loading.upload && <Loader />}
-        <StatusMessage {...status.upload} />
+        <StatusMessage {...status.upload} isDark={darkMode} />
 
         {/* Sheet Selection */}
         {sheets.length > 0 && (
@@ -254,7 +268,11 @@ function App() {
             <select
               value={selectedSheet}
               onChange={(e) => setSelectedSheet(e.target.value)}
-              className="w-full sm:w-auto border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className={`w-full sm:w-auto border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                  : 'border-gray-300'
+              }`}
             >
               <option value="">-- Choose Sheet --</option>
               {sheets.map((s, i) => (
@@ -270,7 +288,7 @@ function App() {
           </div>
         )}
         {loading.sheet && <Loader />}
-        <StatusMessage {...status.sheet} />
+        <StatusMessage {...status.sheet} isDark={darkMode} />
 
         {/* Search Fields */}
         {columns.length > 0 && (
@@ -281,7 +299,11 @@ function App() {
                   <select
                     value={sf.field}
                     onChange={(e) => handleFieldChange(i, "field", e.target.value)}
-                    className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                        : 'border-gray-300'
+                    }`}
                   >
                     <option value="">-- Field --</option>
                     {columns.map((col, j) => (
@@ -292,13 +314,17 @@ function App() {
                     type="text"
                     value={sf.query}
                     onChange={(e) => handleFieldChange(i, "query", e.target.value)}
-                    className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                        : 'border-gray-300'
+                    }`}
                     placeholder="Enter query"
                   />
                   {searchFields.length > 1 && (
                     <button
                       onClick={() => removeField(i)}
-                      className="text-red-600 px-2 hover:text-red-800"
+                      className={`px-2 ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
                       title="Remove field"
                     >
                       ✕
@@ -309,7 +335,7 @@ function App() {
             </div>
             <button
               onClick={addField}
-              className="text-sm text-blue-600 mb-2 hover:underline"
+              className={`text-sm mb-2 hover:underline ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}
             >
               + Add another field
             </button>
@@ -325,21 +351,21 @@ function App() {
                 Search All Columns
               </button>
               <button
-                onClick={() => setShowColumnSelect(true)}
+                onClick={() => setShowColumnSelect((v) => !v)}
                 className="px-4 py-2 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 transition"
               >
-                Choose Columns
+                {showColumnSelect ? 'Hide Column Selection' : 'Choose Columns'}
               </button>
-              {showColumnSelect && (
-                <select
-                  value={layoutMode}
-                  onChange={(e) => setLayoutMode(e.target.value)}
-                  className="border p-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-purple-200"
-                >
-                  <option value="wide">Table View</option>
-                  <option value="vertical">Card View</option>
-                </select>
-              )}
+              <select
+                value={layoutMode}
+                onChange={(e) => setLayoutMode(e.target.value)}
+                className={`border p-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-purple-200 ${
+                  darkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'border-gray-300'
+                }`}
+              >
+                <option value="wide">Table View</option>
+                <option value="vertical">Card View</option>
+              </select>
             </div>
           </div>
         )}
@@ -347,7 +373,9 @@ function App() {
         {/* Column Selection */}
         {showColumnSelect && columns.length > 0 && (
           <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border rounded p-2 max-h-48 overflow-auto bg-gray-50">
+            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 border rounded p-2 max-h-48 overflow-auto ${
+              darkMode ? 'bg-gray-700 text-gray-100 border-gray-600' : 'bg-gray-50 border-gray-300'
+            }`}>
               {columns.map((col, i) => (
                 <label key={i} className="flex items-center gap-1">
                   <input
@@ -362,17 +390,26 @@ function App() {
                           : [...prev, value]
                       );
                     }}
+                    className={darkMode ? 'bg-gray-600 border-gray-500' : ''}
                   />
-                  <span>{col}</span>
+                  <span className={darkMode ? 'text-gray-200' : ''}>{col}</span>
                 </label>
               ))}
             </div>
-            <button
-              onClick={searchData}
-              className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition"
-            >
-              Search Selected Columns
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={searchData}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition"
+              >
+                Search Selected Columns
+              </button>
+              <button
+                onClick={() => setShowColumnSelect(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 transition"
+              >
+                Cancel
+              </button>
+            </div>
             {loading.search && <Loader />}
           </div>
         )}
@@ -380,7 +417,7 @@ function App() {
         {/* Results Message (always above results) */}
         {status.search?.msg && (
           <div className="mb-4">
-            <StatusMessage {...status.search} />
+            <StatusMessage {...status.search} isDark={darkMode} />
           </div>
         )}
 
@@ -403,14 +440,18 @@ function App() {
         {results.length > 0 && (
           <div className="mb-8">
             {layoutMode === "wide" ? (
-              <div ref={tableRef} className="overflow-auto rounded-lg border border-gray-300 bg-white shadow">
+              <div ref={tableRef} className={`overflow-auto rounded-lg shadow ${
+                darkMode ? 'border-gray-600' : 'border border-gray-300'
+              } bg-white dark:bg-gray-800`}>
                 <table className="min-w-full text-sm table-auto">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-100 dark:bg-gray-700">
                     <tr>
                       {Object.keys(results[0]).map((col, i) => (
                         <th
                           key={i}
-                          className="px-2 py-1 border whitespace-nowrap text-left font-semibold text-gray-700"
+                          className={`px-2 py-1 whitespace-nowrap text-left font-semibold text-gray-700 dark:text-gray-300 ${
+                            darkMode ? 'border-gray-600' : 'border'
+                          }`}
                         >
                           {col}
                         </th>
@@ -421,12 +462,14 @@ function App() {
                     {results.map((row, i) => (
                       <tr
                         key={i}
-                        className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition"
+                        className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-700 hover:bg-blue-50 dark:hover:bg-gray-600 transition"
                       >
                         {Object.values(row).map((val, j) => (
                           <td
                             key={j}
-                            className="px-2 py-1 border whitespace-nowrap"
+                            className={`px-2 py-1 whitespace-nowrap text-gray-900 dark:text-gray-300 ${
+                              darkMode ? 'border-gray-600' : 'border'
+                            }`}
                             style={{ maxWidth: 400, overflow: 'auto', textOverflow: 'ellipsis' }}
                           >
                             {formatDate(val)}
@@ -442,11 +485,13 @@ function App() {
                 {results.map((row, i) => (
                   <div
                     key={i}
-                    className="bg-white border p-4 rounded-xl shadow text-left hover:shadow-md transition"
+                    className={`border p-4 rounded-xl shadow text-left hover:shadow-md transition ${
+                      darkMode ? 'bg-gray-800 border-gray-600' : 'bg-white'
+                    }`}
                   >
                     {Object.entries(row).map(([k, v], j) => (
                       <p key={j} className="mb-1">
-                        <span className="font-semibold text-gray-700">{k}:</span> <span className="text-gray-900">{formatDate(v)}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">{k}:</span> <span className="text-gray-900 dark:text-gray-100">{formatDate(v)}</span>
                       </p>
                     ))}
                   </div>
