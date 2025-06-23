@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
@@ -44,6 +44,27 @@ function App() {
     sheet: false,
     search: false,
   });
+
+  const [darkMode, setDarkMode] = useState(() => {
+    // Try to use system preference or localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('excel-dark-mode');
+      if (stored !== null) return stored === 'true';
+      // Default to light mode
+      return false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('excel-dark-mode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('excel-dark-mode', 'false');
+    }
+  }, [darkMode]);
 
   const tableRef = useRef();
 
@@ -178,11 +199,33 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 p-2 sm:p-4 flex flex-col items-center">
-      <div className="w-full max-w-full xl:max-w-7xl bg-white rounded-none xl:rounded-2xl shadow-lg p-2 sm:p-6 mt-4 sm:mt-8 mb-4 sm:mb-8 border border-gray-200">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-2 tracking-tight">
-          📊 Excel Data Explorer
-        </h1>
+    <div className={
+      `min-h-screen p-2 sm:p-4 flex flex-col items-center transition-colors duration-300 ` +
+      (darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-purple-100')
+    }>
+      <div className={
+        `w-full max-w-full xl:max-w-7xl shadow-lg p-2 sm:p-6 mt-4 sm:mt-8 mb-4 sm:mb-8 border ` +
+        (darkMode
+          ? 'bg-gray-900 border-gray-700 text-gray-100'
+          : 'bg-white rounded-none xl:rounded-2xl border-gray-200 text-gray-900')
+      }>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-3xl font-bold text-center text-blue-700 dark:text-blue-300 mb-2 tracking-tight flex-1">
+            📊 Excel Data Explorer
+          </h1>
+          <button
+            onClick={() => setDarkMode((d) => !d)}
+            className="ml-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition shadow"
+            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? (
+              <span role="img" aria-label="Light">🌞</span>
+            ) : (
+              <span role="img" aria-label="Dark">🌙</span>
+            )}
+          </button>
+        </div>
         <p className="text-center text-gray-500 mb-6 text-base">
           Upload your Excel file, select a sheet, and search your data instantly.
         </p>
@@ -413,8 +456,8 @@ function App() {
           </div>
         )}
       </div>
-      <footer className="text-center text-xs text-gray-400 mt-8 mb-2 w-full">
-        &copy; {new Date().getFullYear()} Excel Data Explorer. All rights reserved.
+      <footer className="text-center text-xs text-gray-400 dark:text-gray-500 mt-8 mb-2 w-full">
+        &copy; {new Date().getFullYear()} Made by Param Yadav.
       </footer>
     </div>
   );
