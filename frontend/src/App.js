@@ -2,6 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
+import Pagination from '@mui/material/Pagination';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 
 const API_BASE = "https://excel-app-backend.onrender.com";
 
@@ -66,6 +71,9 @@ function App() {
     return false;
   });
 
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -75,6 +83,14 @@ function App() {
       localStorage.setItem('excel-dark-mode', 'false');
     }
   }, [darkMode]);
+
+  // Reset page if results change
+  useEffect(() => {
+    setPage(1);
+  }, [results]);
+
+  const totalPages = Math.ceil(results.length / rowsPerPage);
+  const paginatedResults = results.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   const tableRef = useRef();
 
@@ -459,7 +475,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map((row, i) => (
+                    {paginatedResults.map((row, i) => (
                       <tr
                         key={i}
                         className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-700 hover:bg-blue-50 dark:hover:bg-gray-600 transition"
@@ -482,7 +498,7 @@ function App() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {results.map((row, i) => (
+                {paginatedResults.map((row, i) => (
                   <div
                     key={i}
                     className={`border p-4 rounded-xl shadow text-left hover:shadow-md transition ${
@@ -498,6 +514,46 @@ function App() {
                 ))}
               </div>
             )}
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4">
+              <FormControl size="small" variant="outlined" sx={{ minWidth: 120, background: darkMode ? '#374151' : '#fff', borderRadius: 8 }}>
+                <InputLabel id="rows-per-page-label" sx={{ color: darkMode ? '#cbd5e1' : undefined }}>Rows per page</InputLabel>
+                <Select
+                  labelId="rows-per-page-label"
+                  id="rows-per-page"
+                  value={rowsPerPage}
+                  label="Rows per page"
+                  onChange={e => setRowsPerPage(Number(e.target.value))}
+                  sx={{ color: darkMode ? '#cbd5e1' : undefined }}
+                >
+                  {[5, 10, 20, 50, 100].map((n) => (
+                    <MenuItem key={n} value={n}>{n}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+                color={darkMode ? 'primary' : 'standard'}
+                shape="rounded"
+                showFirstButton
+                showLastButton
+                siblingCount={1}
+                boundaryCount={1}
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    color: darkMode ? '#cbd5e1' : '#1e293b',
+                    backgroundColor: darkMode ? '#1e293b' : '#fff',
+                    borderColor: darkMode ? '#334155' : '#e5e7eb',
+                  },
+                  '& .Mui-selected': {
+                    backgroundColor: darkMode ? '#2563eb' : '#6366f1',
+                    color: '#fff',
+                  },
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
