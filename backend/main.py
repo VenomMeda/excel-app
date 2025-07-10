@@ -1,10 +1,11 @@
 # === backend/main.py ===
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
+from typing import List, Optional, Any
 import pandas as pd
 import uvicorn
 import os
+import json
 
 app = FastAPI()
 
@@ -52,23 +53,50 @@ def search_data(filters: Optional[str] = None, columns: Optional[str] = None, ex
     result_df = df.copy()
 
     if filters:
-        for cond in filters.split("||"):
-            try:
-                field, query = cond.split(":", 1)
-                if field in result_df.columns:
-                    if exact:
+        # Try to parse filters as JSON for per-field logic
+        try:
+            filters_obj = json.loads(filters)
+            if isinstance(filters_obj, list) and all(isinstance(f, dict) for f in filters_obj):
+                for f in filters_obj:
+                    field = f.get("field")
+                    query = f.get("query")
+                    is_exact = f.get("exact", False)
+                    if not field or query is None or field not in result_df.columns:
+                        continue
+                    col_data = result_df[field]
+                    if is_exact:
                         # Exact match (case-insensitive for strings)
-                        col_data = result_df[field]
                         if pd.api.types.is_string_dtype(col_data):
-                            result_df = result_df[col_data.astype(str).str.lower() == query.lower()]
+                            result_df = result_df[col_data.astype(str).str.lower() == str(query).lower()]
                         else:
-                            result_df = result_df[col_data == type(col_data.iloc[0])(query)]
+                            try:
+                                result_df = result_df[col_data == type(col_data.iloc[0])(query)]
+                            except Exception:
+                                result_df = result_df[col_data == query]
                     else:
                         result_df = result_df[
-                            result_df[field].astype(str).str.contains(query, case=False, na=False)
+                            result_df[field].astype(str).str.contains(str(query), case=False, na=False)
                         ]
-            except Exception:
-                continue
+            else:
+                raise ValueError("Not a list of dicts")
+        except Exception:
+            # Fallback: old logic (string split, global exact)
+            for cond in filters.split("||"):
+                try:
+                    field, query = cond.split(":", 1)
+                    if field in result_df.columns:
+                        if exact:
+                            col_data = result_df[field]
+                            if pd.api.types.is_string_dtype(col_data):
+                                result_df = result_df[col_data.astype(str).str.lower() == query.lower()]
+                            else:
+                                result_df = result_df[col_data == type(col_data.iloc[0])(query)]
+                        else:
+                            result_df = result_df[
+                                result_df[field].astype(str).str.contains(query, case=False, na=False)
+                            ]
+                except Exception:
+                    continue
 
     if columns:
         cols = [col.strip() for col in columns.split(",") if col.strip() in result_df.columns]

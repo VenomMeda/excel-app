@@ -9,6 +9,8 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 const API_BASE = "https://excel-app-backend.onrender.com";
 
@@ -49,7 +51,7 @@ function App() {
   const [sheets, setSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [columns, setColumns] = useState([]);
-  const [searchFields, setSearchFields] = useState([{ field: "", query: "" }]);
+  const [searchFields, setSearchFields] = useState([{ field: '', query: '', exact: false }]);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [results, setResults] = useState([]);
@@ -140,24 +142,27 @@ function App() {
   const searchData = async () => {
     setLoading((l) => ({ ...l, search: true }));
 
-    const filters = searchFields
-      .filter((f) => f.field && f.query)
-      .map((f) => `${f.field}:${f.query}`)
-      .join("||");
+    // Build filters as JSON for per-field exact/contains logic
+    const filtersArr = searchFields.filter((f) => f.field && f.query).map((f) => ({
+      field: f.field,
+      query: f.query,
+      exact: !!f.exact,
+    }));
+    const filters = JSON.stringify(filtersArr);
 
     const params = { filters };
     if (showColumnSelect && selectedColumns.length > 0) {
       params.columns = selectedColumns.join(",");
     }
-    params.exact = exactMatch;
+    // Remove global exactMatch param (now handled per-field)
 
     try {
       const res = await axios.get(`${API_BASE}/search/`, { params });
       setResults(res.data);
       if (res.data.length > 0) {
-        setMessage("search", "success", `🔍 ${res.data.length} results found`, true);
+        setMessage("search", "success", `✅ Found ${res.data.length} result${res.data.length > 1 ? "s" : ""}`);
       } else {
-        setMessage("search", "info", "No results found", true);
+        setMessage("search", "info", "No results found.");
       }
     } catch {
       setMessage("search", "error", "❌ Search failed", true);
@@ -173,7 +178,7 @@ function App() {
   };
 
   const addField = () => {
-    setSearchFields([...searchFields, { field: "", query: "" }]);
+    setSearchFields([...searchFields, { field: '', query: '', exact: false }]);
   };
 
   const removeField = (index) => {
@@ -315,15 +320,11 @@ function App() {
           <div className="mb-6">
             <div className="flex flex-col gap-2 mb-2">
               {searchFields.map((sf, i) => (
-                <div className="flex gap-2" key={i}>
+                <div className="flex gap-2 items-center" key={i}>
                   <select
                     value={sf.field}
-                    onChange={(e) => handleFieldChange(i, "field", e.target.value)}
-                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-                      darkMode 
-                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
-                        : 'border-gray-300'
-                    }`}
+                    onChange={(e) => handleFieldChange(i, 'field', e.target.value)}
+                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'border-gray-300'}`}
                   >
                     <option value="">-- Field --</option>
                     {columns.map((col, j) => (
@@ -333,13 +334,20 @@ function App() {
                   <input
                     type="text"
                     value={sf.query}
-                    onChange={(e) => handleFieldChange(i, "query", e.target.value)}
-                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-                      darkMode 
-                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
-                        : 'border-gray-300'
-                    }`}
+                    onChange={(e) => handleFieldChange(i, 'query', e.target.value)}
+                    className={`flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'border-gray-300'}`}
                     placeholder="Enter query"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!sf.exact}
+                        onChange={e => handleFieldChange(i, 'exact', e.target.checked)}
+                        sx={{ color: darkMode ? '#90caf9' : undefined }}
+                      />
+                    }
+                    label="Exact Match"
+                    sx={{ ml: 1, color: darkMode ? '#cbd5e1' : undefined }}
                   />
                   {searchFields.length > 1 && (
                     <button
