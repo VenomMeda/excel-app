@@ -7,6 +7,8 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 const API_BASE = "https://excel-app-backend.onrender.com";
 
@@ -73,6 +75,7 @@ function App() {
 
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [exactMatch, setExactMatch] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -146,6 +149,7 @@ function App() {
     if (showColumnSelect && selectedColumns.length > 0) {
       params.columns = selectedColumns.join(",");
     }
+    params.exact = exactMatch;
 
     try {
       const res = await axios.get(`${API_BASE}/search/`, { params });
@@ -153,7 +157,7 @@ function App() {
       if (res.data.length > 0) {
         setMessage("search", "success", `🔍 ${res.data.length} results found`, true);
       } else {
-        setMessage("search", "info", "⚠️ No results found", true);
+        setMessage("search", "info", "No results found", true);
       }
     } catch {
       setMessage("search", "error", "❌ Search failed", true);
@@ -382,6 +386,16 @@ function App() {
                 <option value="wide">Table View</option>
                 <option value="vertical">Card View</option>
               </select>
+              <ToggleButton
+                value="exact"
+                selected={exactMatch}
+                onChange={() => setExactMatch((prev) => !prev)}
+                color="primary"
+                size="small"
+                sx={{ height: 36 }}
+              >
+                Exact Match
+              </ToggleButton>
             </div>
           </div>
         )}

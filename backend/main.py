@@ -44,7 +44,7 @@ async def select_sheet(sheet_name: str = Form(...)):
         return {"error": f"Failed to load sheet: {str(e)}"}
 
 @app.get("/search/")
-def search_data(filters: Optional[str] = None, columns: Optional[str] = None):
+def search_data(filters: Optional[str] = None, columns: Optional[str] = None, exact: Optional[bool] = False):
     df = session_data.get("df")
     if df is None:
         return []
@@ -56,9 +56,17 @@ def search_data(filters: Optional[str] = None, columns: Optional[str] = None):
             try:
                 field, query = cond.split(":", 1)
                 if field in result_df.columns:
-                    result_df = result_df[
-                        result_df[field].astype(str).str.contains(query, case=False, na=False)
-                    ]
+                    if exact:
+                        # Exact match (case-insensitive for strings)
+                        col_data = result_df[field]
+                        if pd.api.types.is_string_dtype(col_data):
+                            result_df = result_df[col_data.astype(str).str.lower() == query.lower()]
+                        else:
+                            result_df = result_df[col_data == type(col_data.iloc[0])(query)]
+                    else:
+                        result_df = result_df[
+                            result_df[field].astype(str).str.contains(query, case=False, na=False)
+                        ]
             except Exception:
                 continue
 
