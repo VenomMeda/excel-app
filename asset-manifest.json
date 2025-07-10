@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/excel-app/static/css/main.a3fcfd6b.css",
-    "main.js": "/excel-app/static/js/main.8aeed389.js",
+    "main.js": "/excel-app/static/js/main.fc98e75c.js",
     "index.html": "/excel-app/index.html",
     "main.a3fcfd6b.css.map": "/excel-app/static/css/main.a3fcfd6b.css.map",
-    "main.8aeed389.js.map": "/excel-app/static/js/main.8aeed389.js.map"
+    "main.fc98e75c.js.map": "/excel-app/static/js/main.fc98e75c.js.map"
   },
   "entrypoints": [
     "static/css/main.a3fcfd6b.css",
-    "static/js/main.8aeed389.js"
+    "static/js/main.fc98e75c.js"
   ]
 }
