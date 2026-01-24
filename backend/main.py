@@ -7,6 +7,8 @@ import numpy as np
 
 app = FastAPI()
 
+
+
 # Allow frontend access
 app.add_middleware(
     CORSMiddleware,
